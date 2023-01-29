@@ -1,5 +1,6 @@
 ---
 theme: default
+auto_scaling: true
 class:
   invert
 paginate: true
@@ -799,13 +800,239 @@ Og spesifiserer samtidig at Nothing kan være lik Nothing.
 
 Maybe er ikke en konkret type men det er Maybe a
     -->
+
+Må forsikre oss om at m er en instans av Eq:
+```hs
+instance (Eq m) => Eq (Maybe m) where
+    Just x == Just y = x == y
+    Nothing == Nothing = True
+    _ == _ = False
+
+```
+
+<!-- Så her bruker vi en begrensning i instansdeklarasjonen. Som betyr at vi vil at alle
+    typer på formen Maybe m skal være del av Eq, men bare for typer av m som allerede er
+    del av Eq.
+
+-->
+Kommando for å se informasjon om hvilke funksjoner en typeklasse definerer:
+`:info YourTypeClass`
+
 ---
 
 # A yes-no typeclass
 
+<!--
+    3 øverste vil alerte med NO, mens siste vil alerte med YEAH!
+    Js behandler non-empty strings som en slags true-ish verdi -->
+
+
+<!-- Typeklassen definerer 1 funksjon. Tar 1 verdi som hold på et konsept
+    av true-ness og returnere Bool.
+
+-->
+
+```hs
+class YesNo a where
+    yesno :: a -> Bool
+
+instance YesNo Int where
+    yesno 0 = False
+    yesno _ = True
+
+instance YesNo [a] where
+    yesno [] = False
+    yesno _ = True
+
+instance YesNo Bool where
+    yesno = id
+
+instance YesNo (Maybe a) where
+    yesno (Just _) = True
+    yesno Nothing = False
+
+instance YesNo (Tree a) where
+    yesno EmptyTree = False
+    yesno _ = True
+
+instance YesNo TrafficLight where
+    yesno Red = False
+    yesno _ = True
+```
+<!-- id-funksjonen returnerer seg selv.  -->
+
+<!-- Trenger ingen klassebegrensninger fordi vi ikke gjør noen antakelser om innholdet i maybe.
+    Alle verdier som ikke er Nothing er True og Nothing er False.-->
+
+---
+
+```hs
+ghci> yesno $ length []
+False
+ghci> yesno "haha"
+True
+ghci> yesno ""
+False
+ghci> yesno $ Just 0
+True
+ghci> yesno True
+True
+ghci> yesno EmptyTree
+False
+ghci> yesno []
+False
+ghci> yesno [0,0,0]
+True
+ghci> :t yesno
+yesno :: (YesNo a) => a -> Bool
+
+```
+
+<!-- Ser at vi kan imitere Js sin bool-ish oppførsel med en slik typeklasse. -->
+
 ---
 
 # The Functor typeclass
+
+
+<!-- En typeklasse som i essens er for ting som kan mappes over. Nærliggende å tenke på lister
+    og det stemmer. Lister er en del av Functor typeklassen.
+    -->
+
+```hs
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+```
+
+<!-- definerer altså en funksjon, fmap og har ingen default implementasjon for denne.
+    f er ikke en konkret type, men en typekonstruktør som tar ett typeparameter.
+    -->
+
+Ligner på map:
+
+```hs
+map :: (a -> b) -> [a] -> [b]
+```
+
+instansiert som en Functor slik:
+```hs
+instance Functor [] where
+    fmap = map
+```
+
+<!-- map er bare en fmap, som fungerer KUN på lister.
+    Ser fra hvordan lister er instansiert som en Functor, at vi sender inn en typekonstruktør []
+    som tar imot nøyaktig ett typeparameter.
+    -->
+
+```hs
+map :: (a -> b) -> [a] -> [b]
+ghci> fmap (*2) [1..3]
+[2,4,6]
+ghci> map (*2) [1..3]
+[2,4,6]
+```
+<!-- Får det samme resultatet av å bruke fmap og map på lister fordi de ER det samme. -->
+---
+
+### Typer som oppfører seg som en boks kan være Functors.
+
+<!-- En liste kan være en boks med uendelig mange små rom
+    som alle kan være tomme.
+    -->
+
+`Maybe a` er som en boks
+
+<!-- som enten har ingenting aka Nothing eller nøyaktig en ting.  -->
+
+```hs
+instance Functor Maybe where
+    fmap f (Just x) = Just (f x)
+    fmap f Nothing = Nothing
+```
+<!-- Sånn er Maybe en functor. Igjen, så må Functor motta en typekonstruktør med ett parameter
+    derfor skriver vi Maybe og ikke (Maybe m).
+    -->
+Mentalt kan man bytte ut `f` med `Maybe`:
+Da blir `fmap` sånn: `(a -> b) -> Maybe a -> Maybe b`
+
+```hs
+ghci> fmap (*2) (Just 200)
+Just 400
+ghci> fmap (*2) Nothing
+Nothing
+```
+
+<!-- Vi kan bruke map på andre ting en lister wohoo. -->
+---
+
+Kan gjøre `Tree a` til en `Functor`
+
+<!-- Tree typen er en boks, fordi den holder flere eller ingen verdier, og typekonstruktøren tar
+    nøyaktig ett typeparameter. -->
+
+Hvis `fmap` var lagd kun for et `Tree`:
+`(a -> b) -> Tree a -> Tree b`
+
+```hs
+instance Functor Tree where
+    fmap f EmptyTree = EmptyTree
+    fmap f (Node x leftsub rightsub) = Node (f x) (fmap f leftsub) (fmap f rightsub)
+```
+
+<!-- EmptyTree mapper alltid til EmptyTree. Så applisere vi f til verdien i noden,
+    og kjører fmap rekursivt på nodens subtrær, høyre og venstre. -->
+
+---
+
+Kan vi gjøre det samme for `Either`?
+```hs
+instance Functor (Either a) where
+    fmap f (Right x) = Right (f x)
+    fmap f (Left x) = Left x
+```
+
+<!-- Either er også en boks, men denne typekonstruktøren tar ikke ett typeparameter, men to.
+    Men vi kan partially applye `Either` ved å gi den ett parameter, slik at det andre er
+    fritt Functor (Either a).
+
+Så hva skjer her? Vi mapper over Eithers høyre verdi, men vi gjør ingenting med dens venstre verdi,
+fordi denne er av en annen type.
+    -->
+
+```hs
+data Either a b = Left a | Right b
+```
+
+Kan ikke bruke én funksjon til å mappe over to verdier, når disse ikke er av samme type
+&nbsp;
+
+`Data.Map` kan også gjøres til en Functor fordi disse også holder verdier.
+
+Hvis du har et map av typen `Map k v`, så vil `fmap` mappe en funksjon `v -> v'` over
+et map av typen `Map k v` og returnere et map av typen `Map k v'`
+
+---
+
+Hvordan gjøre `Map k` til en instans av `Functor`:
+
+```hs
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+class Functor' f where
+fmap' :: (a -> b) -> f a -> f b
+
+instance Functor' (Map k) where
+fmap' f m = Map.fromDistinctAscList $ map (\(k, v) -> (k, f v)) $ Map.assocs m
+
+ghci> let m = Map.fromList [(1, "one"), (2, "two")]
+ghci> fmap' (++" Custom Functor instance") m
+fromList [(1,"one Custom Functor instance"),(2,"two Custom Functor instance")]
+```
+
+<!-- Skrevet et forslag. Gjerne kom med bedre måter å gjøre det på, for her konvertere jeg til
+    liste og bruker map og konverterer tilbake til Map. -->
 
 ---
 

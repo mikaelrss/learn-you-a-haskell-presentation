@@ -302,25 +302,503 @@ Haskell kan automatisk gjøre typene våre til instanser av disse typeklassene
 data Person = Person { firstName :: String
     , lastName :: String
     , age :: Int
-}
+} deriving (Eq)
 ```
 
 <!-- Hvis vi ser på følgende datatype Person. Antar ingen personer har samme fornavn, etternavn og alder
     Gir mening å sjekke om to personer kan være den samme.
+
+Nå kan vi sammenlikne to personer med == eller /=. Haskell sjekker så om verdikonstruktørene matcher, og så sjekker
+den hvert par med felter med ==. Alle typene av felter må også være en del av Eq typeklassen.
     -->
 
+```hs
+ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}
+ghci> let adRock = Person {firstName = "Adam", lastName = "Horovitz", age = 41}
+ghci> let mca = Person {firstName = "Adam", lastName = "Yauch", age = 44}
+ghci> mca == adRock
+False
+ghci> mikeD == adRock
+False
+ghci> mikeD == mikeD
+True
+ghci> mikeD == Person {firstName = "Michael", lastName = "Diamond", age = 43}
+True
+```
+
+---
+`Show` og `Read`
+
+<!-- Er for typer som kan konverteres til og fra strings. Typene til feltene må også være
+    en del av Show og Read-->
+
+```hs
+data Person = Person { firstName :: String
+    , lastName :: String
+    , age :: Int
+} deriving (Eq, Show, Read)
+```
+
+Read:
+<!-- Må eksplisitt sette typen når vi bruker read, hvis ikke vet ikke Haskell hvilken type resultatet skal være
+    eller bruke resultatet på en måte som gjør at haskell kan infere typen.
+    -->
+
+```hs
+ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" :: Person
+Person {firstName = "Michael", lastName = "Diamond", age = 43}
+```
+
+Lese parameteriserte typer:
+Kan ikke gjøre sånn: `"Just 't'" :: Maybe a`, men vi kan gjøre slik: `read "Just 't'" :: Maybe Char`.
+<!-- Må spesifisere typeparameterene. -->
+---
+
+```hs
+data Bool = False | True deriving (Ord)
+```
+
+`True` > `False` fordi `False` er spesifisert først.
+
+<!-- Samme i Maybe. Nothing er spesifisert før just, så Nothing er mindre enn Just Something-->
+<!-- Hvis vi sammenligner to Just-verdier, sammenlignes verdien inni disse -->
+
+```hs
+ghci> Nothing < Just 100
+True
+ghci> Nothing > Just (-49999)
+False
+ghci> Just 3 `compare` Just 2
+GT
+ghci> Just 100 > Just 50
+True
+```
+
+---
+`Enum` og `Bounded`
+
+```hs
+data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday
+           deriving (Eq, Ord, Show, Read, Bounded, Enum)
+```
+
+```hs
+ghci> minBound :: Day
+Monday
+ghci> maxBound :: Day
+Sunday
+```
+
+```hs
+ghci> succ Monday
+Tuesday
+ghci> pred Saturday
+Friday
+ghci> [Thursday .. Sunday]
+[Thursday,Friday,Saturday,Sunday]
+ghci> [minBound .. maxBound] :: [Day]
+[Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday]
+```
+
+<!-- Siden alle verdikonstruktørene er nullary (tar ingen parametere)
+    kan vi gjøre typen en del av Enum typeklassen. Enum er for ting som tar forgjengere og etterfølgere
+
+Bounded er for ting som har en min-verdi og en maks-verdi. Kan hente ut første og siste dag.
+
+Enum gjør at vi kan lage ranges.
+
+    -->
 ---
 
 # Type synonyms
+
+```hs
+type String = [Char]
+```
+
+<!-- Gjør ingenting, bare gir noen typer forskjellige navn. -->
+
+Disse er ekvivalente men sistnevnte er mer lesbar
+
+```hs
+toUpperString :: [Char] -> [Char]
+toUpperString :: String -> String
+```
+
+---
+
+Map som er en telefonbok:
+
+```hs
+phoneBook :: [(String,String)]
+phoneBook =
+[("betty","555-2938")
+,("bonnie","452-2928")
+,("penny","853-2492")
+]
+```
+
+```hs
+type PhoneNumber = String
+type Name = String
+type PhoneBook = [(Name,PhoneNumber)]
+```
+
+<!-- Gjør koden mer lesbar. Typisk å gi strenger typesynonymer for å gi mer informasjon
+    om hva strengene i funksjonen skal bli brukt som og hva de representerer.
+    -->
+
+```hs
+inPhoneBook :: Name -> PhoneNumber -> PhoneBook -> Bool
+inPhoneBook name pnumber pbook = (name,pnumber) `elem` pbook
+
+inPhoneBook :: String -> String -> [(String,String)] -> Bool
+inPhoneBook name pnumber pbook = (name,pnumber) `elem` pbook
+```
+
+<!-- Lar oss implementere denne funksjonen som har en deskriptiv typedeklarasjon.
+    Burde ikke overdrive typesysnonymer-->
+
+---
+
+Typesynonymer kan også parameteriseres
+
+```hs
+type AssocList k v = [(k,v)]
+```
+
+<!-- Synonym for en association list. -->
+
+Kan også bruke partial application til type parametre
+
+```hs
+type IntMap v = Map Int v
+type IntMap = Map Int
+```
+
+<!-- IntMap tar 1 typeparameter, og det er hvilken type Int peker på. -->
+---
+
+```hs
+data Either a b = Left a | Right b deriving (Eq, Ord, Read, Show)
+```
+
+<!-- Hvis Left er brukt, returneres data av typen a, hvis Right er brukt returneres innholdet av typen b
+    Ofte brukt for feil når vi ønsker å formidle informasjon om hva som feilet.
+
+Vi kan bruke Maybe, men Nothing sier ingenting om hva som feilet.
+
+Typisk er da Left en feil og Right et resultat. Disse kan pattern-matches på i andre funksjoner.
+    -->
+
+```hs
+import qualified Data.Map as Map
+
+data LockerState = Taken | Free deriving (Show, Eq)
+type Code = String
+type LockerMap = Map.Map Int (LockerState, Code)
+```
+
+<!-- Eksempel: Har skap på en high school. Hvert skap har en kodelås
+    Når en student vil ha et nytt skap, ber han om å få skap med nr x
+    Så får de koden tilbake. Hvis noen allerede har skapet, får de ikke koden
+    og de må velge et annet skap.
+    -->
+
+```hs
+lockerLookup :: Int -> LockerMap -> Either String Code
+lockerLookup lockerNumber map =
+    case Map.lookup lockerNumber map of
+        Nothing -> Left $ "Locker number " ++ show lockerNumber ++ " doesn't exist!"
+        Just (state, code) -> if state /= Taken
+                                then Right code
+                                else Left $ "Locker " ++ show lockerNumber ++ " is already taken!"
+```
+
+<!-- Her er feilen representert med en String, (Og resultatet, men vi har gitt den et type synonym Code) -->
+---
+
+```hs
+lockers :: LockerMap
+lockers = Map.fromList
+[(100,(Taken,"ZD39I"))
+,(101,(Free,"JAH3I"))
+,(103,(Free,"IQSA9"))
+,(105,(Free,"QOTSA"))
+,(109,(Taken,"893JJ"))
+,(110,(Taken,"99292"))
+]
+
+ghci> lockerLookup 101 lockers
+Right "JAH3I"
+ghci> lockerLookup 100 lockers
+Left "Locker 100 is already taken!"
+ghci> lockerLookup 102 lockers
+Left "Locker number 102 doesn't exist!"
+ghci> lockerLookup 110 lockers
+Left "Locker 110 is already taken!"
+ghci> lockerLookup 105 lockers
+Right "QOTSA"
+```
 
 ---
 
 # Recursive data structures
 
+<!-- Vi kan implementere vår egen liste!
+
+    Det er enten en tom liste eller en kombinasjon av en head med en verdi
+    og en liste.
+
+Kaller Cons infix for å se at den oppfører seg likt.
+    -->
+
+Typekonstruktører kan referere til seg selv.
+
+`[3,4,5,6]` er syntakssukker for `3:(4:(5:6:[]))` som også kan skrives slik `3:4:5:6:[]`
+
+```hs
+data List a = Empty | Cons a (List a) deriving (Show, Read, Eq, Ord)
+```
+
+```hs
+ghci> Empty
+Empty
+ghci> 5 `Cons` Empty
+Cons 5 Empty
+ghci> 4 `Cons` (5 `Cons` Empty)
+Cons 4 (Cons 5 Empty)
+ghci> 3 `Cons` (4 `Cons` (5 `Cons` Empty))
+Cons 3 (Cons 4 (Cons 5 Empty))
+```
+
+---
+<!-- Kan definere funksjoner til å være automatisk infix ved å bruke spesialtegn. Kan også gjøre det samme
+    med konstruktører.
+
+Ny syntaktisk construct: fixity declaration.
+
+r i infixr betyr at den er høyre-assossiativ og at fixity er 5, altså om grad av binding.
+
+f.eks (*) er infixl 7 og (+) er infixl 6 Det betyr at gange binder tettere enn +
+    -->
+
+Fixity declarations:
+
+```hs
+infixr 5 :-:
+data List a = Empty | a :-: (List a) deriving (Show, Read, Eq, Ord)
+```
+
+```hs
+ghci> 3 :-: 4 :-: 5 :-: Empty
+(:-:) 3 ((:-:) 4 ((:-:) 5 Empty))
+ghci> let a = 3 :-: 4 :-: 5 :-: Empty
+ghci> 100 :-: a
+(:-:) 100 ((:-:) 3 ((:-:) 4 ((:-:) 5 Empty)))
+```
+
+```hs
+infixr 5  .++
+(.++) :: List a -> List a -> List a
+Empty .++ ys = ys
+(x :-: xs) .++ ys = x :-: (xs .++ ys)
+```
+
+<!-- Kan nå lage en kopi av `++` for vår egen listetype:
+    Kaller den .++ men gjør akkurat det samme som ++ for vanlige lister
+    Kunne implementer alle funksjoner på lister for vår egen listetype hvis vi ville.
+
+Kan pattern matche x :-: xs fordi pattern matching egenlit matcher konstruktører.
+
+    -->
+
+```hs
+ghci> let a = 3 :-: 4 :-: 5 :-: Empty
+ghci> let b = 6 :-: 7 :-: Empty
+ghci> a .++ b
+(:-:) 3 ((:-:) 4 ((:-:) 5 ((:-:) 6 ((:-:) 7 Empty))))
+```
+
+---
+
+## Implementering av binærsøketre
+
+![](binarytree.png)
+
+<!-- et element som peker til to elementer. Det minste elementet til venstre og største til høyre.
+    Hver av disse elementene kan peke til 0,1 eller to elementer.
+
+Alle elementene i venstre subtre er mindre og alle elementer i høyre subtre er større.
+
+    -->
+
+---
+<!-- Et tre er enten et tomt tree eller et element som har en verdi og to trær
+
+Skal lage en funksjon som setter inn verdier i treet vårt.
+Starter med en funksjon som lager et tree med en verdi og to tomme subtrær.
+    -->
+
+```hs
+data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show, Read, Eq)
+```
+
+```hs
+singleton :: a -> Tree a
+singleton x = Node x EmptyTree EmptyTree
+
+treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = singleton x
+treeInsert x (Node a left right)
+    | x == a = Node x left right
+    | x < a  = Node a (treeInsert x left) right
+    | x > a  = Node a left (treeInsert x right)
+```
+
+<!-- Hvis vi møte et EmptyTree så legger vi inn verdien vår i et singleton tre.
+
+Ellers hvis lik, returner treet.
+hvis mindre enn verdien vi står på, returner høyretree og bytt ut venstre tree.
+hvis større enn verdien vi står på, returner venstre tree og bytt ut høyre tree.
+
+
+    -->
+
+```hs
+treeElem :: (Ord a) => a -> Tree a -> Bool
+treeElem x EmptyTree = False
+treeElem x (Node a left right)
+    | x == a = True
+    | x < a  = treeElem x left
+    | x > a  = treeElem x right
+```
+
+<!-- Så lager vi en funksjon som sjekker om et element finnes i treet vårt. -->
+
+```hs
+ghci> let nums = [8,6,4,1,7,3,5]
+ghci> let numsTree = foldr treeInsert EmptyTree nums
+ghci> numsTree
+Node 5 (Node 3 (Node 1 EmptyTree EmptyTree) (Node 4 EmptyTree EmptyTree)) (Node 7 (Node 6 EmptyTree EmptyTree) (Node 8 EmptyTree EmptyTree))
+
+```
+
 ---
 
 # Typeclasses 102
 
+<!-- En typeklasse definerer oppførsel, som f.eks sammenlikne likhet
+    Og typer som kan oppføre seg på denne måten, blir gjort til instanser av typeklassen.
+
+Oppførselen oppnåes ved å definere funksjoner eller typedeklarasjoner som vi implementerer.
+
+Når vi sier at en type er en instans av en typeklasse, betyr det at vi kan bruke funksjonene
+typeklassen definener på den typen.
+
+Har ingenting med klasser å gjøre i imperative språk, så prøv å legg fra dokker imperative
+klassekonsepter.
+
+    -->
+
+```hs
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+    x == y = not (x /= y)
+    x /= y = not (x == y)
+```
+
+<!-- class bruker til å definere en ny typeklasse som heter Eq, a er typevariabelen. Må være et lowercase ord
+    Må spesifisere typesignaturen til funkjsonene. Trenger ikke å definere implementasjonen.
+
+Her er funksjoneimplementasjonen definert, og vi har definert de ved hjelp av mutual recursion.
+
+Sagt at de er like dersom de ikke er forksjellige
+og de er ulike dersom de ikke er like.
+    -->
+
+```hs
+data TrafficLight = Red | Yellow | Green
+```
+<!-- Har ikke derived av Eq her. Det er fordi vi skal spesifisere de for hånd. -->
+
+Sånn gjør vi den til en instans av `Eq`:
+```hs
+instance Eq TrafficLight where
+    Red == Red = True
+    Green == Green = True
+    Yellow == Yellow = True
+    _ == _ = False
+```
+
+<!-- Her gjør vi det ved å bruke instance nøkkelordet. Class er for å lage typeklasser, og instance er for å
+    gjøre typene våre til instanser av typeklassen.
+
+    Byttet ut a-en med TrafficLight.
+
+Fordi vi definerte (==) og (/=) med mutual recursion, så trenger vi bare å overskrive implementasjonen på 1 av disse
+for å få begge til å fungere. Dette kallse minimal complete definition av en typeklasse.
+
+Bruker pattern-matching til å definere likhet.
+    -->
+---
+
+Show:
+
+```hs
+instance Show TrafficLight where
+    show Red = "Red light"
+    show Yellow = "Yellow light"
+    show Green = "Green light"
+```
+
+```hs
+ghci> Red == Red
+True
+ghci> Red == Yellow
+False
+ghci> Red `elem` [Red, Yellow, Green]
+True
+ghci> [Red, Yellow, Green]
+[Red light,Yellow light,Green light]
+```
+
+<!-- implementere også show med pattern-matching. Så kan vi se at de fungerer som de skal.
+    Vi kunne bare brukt deriving for Eq og fått akkurat samme oppførsel.
+
+    Men for Show måtte vi gjøre det på denne måten fordi vi ville customize oppførselen.
+    -->
+
+---
+### Subklasser
+
+Kan også lage typeklasser som er subklasser av andretypeklasser:
+
+```hs
+class (Eq a) => Num a where
+    ...
+```
+
+<!-- Her er typeklassen num en subklasse av typeklassen Eq.
+    Så en type må være en instans av Eq, før den kan være en instans av Num
+
+    -->
+---
+Hva med `Maybe`?
+```hs
+instance Eq (Maybe m) where
+    Just x == Just y = x == y
+    Nothing == Nothing = True
+    _ == _ = False
+```
+<!-- Maybe er ikke en konkret type, men en typekonstruktør som tar et type parameter.
+
+Definerer derfor oppførselen for maybe til å sammenligne verdiene direkte for just-verdier.
+Og spesifiserer samtidig at Nothing kan være lik Nothing.
+
+Maybe er ikke en konkret type men det er Maybe a
+    -->
 ---
 
 # A yes-no typeclass

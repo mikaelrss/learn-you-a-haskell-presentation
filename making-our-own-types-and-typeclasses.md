@@ -68,9 +68,9 @@ surface (Rectangle x1 y1 x2 y2) = (abs $ x2 - x1) * (abs $ y2 - y1)
 ```
 
 &nbsp;
-Kunne ikke lagd funksjoner som så slik ut: `surface :: Circle -> Float` fordi `Circle` er en value constructor. Kan
-heller ikke lage en signatur av type `False -> Float` fordi `False` også er en value constructor (som ikke tar noen
-parametre)
+Kunne ikke lagd funksjoner som så slik ut: `surface :: Circle -> Float` fordi
+`Circle` er en value constructor. Kan ikke lage en signatur av type `False -> Float`
+fordi `False` også er en value constructor (som ikke tar noen parametre)
 <!-- Er dette vi har gjort når vi har pattern matchet tidligere i kapitlet. Når du pattern matcher på [] eller False eller tallet 5 har vi matchet på konstruktører, ikke typer-->
 
 &nbsp;
@@ -153,9 +153,10 @@ module Shapes
 `(..)` betyr at vi også eksporterer value constructors for data typen.
 Er det samme som å skrive `Shape (Rectangle, Circle)`
 
-&nbsp;
-Kunne også eksportert slik: `Shape`. Da ville konsumenter som importerer modulen måtte bruke hjelpefunksjoner for å lage
-shapes. `baseCircle` og `baseRect`
+Kunne også eksportert slik: `Shape`. Da ville konsumenter som importerer modulen
+måtte bruke hjelpefunksjoner for å lage shapes.
+
+`baseCircle` og `baseRect`
 
 ```hs
 baseCircle :: Float -> Shape
@@ -231,8 +232,8 @@ Typekonstruktører kan motta typer som parametre for å produsere nye typer.
 data Maybe a = Nothing | Just a
 ```
 
-`a` er en type parameter. `Maybe` er en typekonstruktør. Kan være `Maybe Int`, `Maybe Person` eller `Maybe String` osv.
-Kan aldri være typen `Maybe`.
+`a` er en type parameter. `Maybe` er en typekonstruktør. Kan være `Maybe Int`, `Maybe
+Person` eller `Maybe String` osv. Kan aldri være typen `Maybe`.
 List er også en type vi kjenner fra før som også bruker typekonstruktører.
 &nbsp;
 
@@ -243,8 +244,8 @@ ghci> :t Nothing
 Nothing :: Maybe a
 ```
 
-Nothing er polymorfisk. Den kan oppføre seg som `Maybe Int` eller `Maybe String` fordi den ikke returnerer noen verdi
-uansett. På samme måte som at `[]` er polymorfisk
+Nothing er polymorfisk. Den kan oppføre seg som `Maybe Int` eller `Maybe String`
+fordi den ikke returnerer noen verdi uansett. På samme måte som at `[]` er polymorfisk
 
 ---
 <!--
@@ -643,9 +644,7 @@ Starter med en funksjon som lager et tree med en verdi og to tomme subtrær.
 
 ```hs
 data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show, Read, Eq)
-```
 
-```hs
 singleton :: a -> Tree a
 singleton x = Node x EmptyTree EmptyTree
 
@@ -655,18 +654,7 @@ treeInsert x (Node a left right)
     | x == a = Node x left right
     | x < a  = Node a (treeInsert x left) right
     | x > a  = Node a left (treeInsert x right)
-```
 
-<!-- Hvis vi møte et EmptyTree så legger vi inn verdien vår i et singleton tre.
-
-Ellers hvis lik, returner treet.
-hvis mindre enn verdien vi står på, returner høyretree og bytt ut venstre tree.
-hvis større enn verdien vi står på, returner venstre tree og bytt ut høyre tree.
-
-
-    -->
-
-```hs
 treeElem :: (Ord a) => a -> Tree a -> Bool
 treeElem x EmptyTree = False
 treeElem x (Node a left right)
@@ -674,16 +662,43 @@ treeElem x (Node a left right)
     | x < a  = treeElem x left
     | x > a  = treeElem x right
 ```
+<!-- Hvis vi møte et EmptyTree så legger vi inn verdien vår i et singleton tre.
 
-<!-- Så lager vi en funksjon som sjekker om et element finnes i treet vårt. -->
+Ellers hvis lik, returner treet.
+hvis mindre enn verdien vi står på, returner høyretree og bytt ut venstre tree.
+hvis større enn verdien vi står på, returner venstre tree og bytt ut høyre tree.
 
+
+ Så lager vi en funksjon som sjekker om et element finnes i treet vårt. -->
+ ---
 ```hs
 ghci> let nums = [8,6,4,1,7,3,5]
 ghci> let numsTree = foldr treeInsert EmptyTree nums
 ghci> numsTree
-Node 5 (Node 3 (Node 1 EmptyTree EmptyTree) (Node 4 EmptyTree EmptyTree)) (Node 7 (Node 6 EmptyTree EmptyTree) (Node 8 EmptyTree EmptyTree))
+Node 5
+    (Node 3
+        (Node 1
+            EmptyTree
+            EmptyTree
+        )
+        (Node 4
+            EmptyTree
+            EmptyTree
+        )
+    )
+    (Node 7
+        (Node 6
+            EmptyTree
+            EmptyTree
+        )
+        (Node 8
+            EmptyTree
+            EmptyTree
+        )
+    )
 
 ```
+
 
 ---
 
@@ -722,9 +737,11 @@ og de er ulike dersom de ikke er like.
 ```hs
 data TrafficLight = Red | Yellow | Green
 ```
+
 <!-- Har ikke derived av Eq her. Det er fordi vi skal spesifisere de for hånd. -->
 
 Sånn gjør vi den til en instans av `Eq`:
+
 ```hs
 instance Eq TrafficLight where
     Red == Red = True
@@ -772,6 +789,7 @@ ghci> [Red, Yellow, Green]
     -->
 
 ---
+
 ### Subklasser
 
 Kan også lage typeklasser som er subklasser av andretypeklasser:
@@ -787,12 +805,14 @@ class (Eq a) => Num a where
     -->
 ---
 Hva med `Maybe`?
+
 ```hs
 instance Eq (Maybe m) where
     Just x == Just y = x == y
     Nothing == Nothing = True
     _ == _ = False
 ```
+
 <!-- Maybe er ikke en konkret type, men en typekonstruktør som tar et type parameter.
 
 Definerer derfor oppførselen for maybe til å sammenligne verdiene direkte for just-verdier.
@@ -802,6 +822,7 @@ Maybe er ikke en konkret type men det er Maybe a
     -->
 
 Må forsikre oss om at m er en instans av Eq:
+
 ```hs
 instance (Eq m) => Eq (Maybe m) where
     Just x == Just y = x == y
@@ -859,6 +880,7 @@ instance YesNo TrafficLight where
     yesno Red = False
     yesno _ = True
 ```
+
 <!-- id-funksjonen returnerer seg selv.  -->
 
 <!-- Trenger ingen klassebegrensninger fordi vi ikke gjør noen antakelser om innholdet i maybe.
@@ -894,7 +916,6 @@ yesno :: (YesNo a) => a -> Bool
 
 # The Functor typeclass
 
-
 <!-- En typeklasse som i essens er for ting som kan mappes over. Nærliggende å tenke på lister
     og det stemmer. Lister er en del av Functor typeklassen.
     -->
@@ -915,6 +936,7 @@ map :: (a -> b) -> [a] -> [b]
 ```
 
 instansiert som en Functor slik:
+
 ```hs
 instance Functor [] where
     fmap = map
@@ -932,6 +954,7 @@ ghci> fmap (*2) [1..3]
 ghci> map (*2) [1..3]
 [2,4,6]
 ```
+
 <!-- Får det samme resultatet av å bruke fmap og map på lister fordi de ER det samme. -->
 ---
 
@@ -950,6 +973,7 @@ instance Functor Maybe where
     fmap f (Just x) = Just (f x)
     fmap f Nothing = Nothing
 ```
+
 <!-- Sånn er Maybe en functor. Igjen, så må Functor motta en typekonstruktør med ett parameter
     derfor skriver vi Maybe og ikke (Maybe m).
     -->
@@ -986,6 +1010,7 @@ instance Functor Tree where
 ---
 
 Kan vi gjøre det samme for `Either`?
+
 ```hs
 instance Functor (Either a) where
     fmap f (Right x) = Right (f x)
@@ -1037,3 +1062,59 @@ fromList [(1,"one Custom Functor instance"),(2,"two Custom Functor instance")]
 ---
 
 # Kinds and some type-foo
+
+Hvis du ikke skjønner dette, så er det ikke så farlig
+
+<!-- Men hvis du skjønner det vil du få en god forståelse av haskells typesystem-->
+
+---
+
+<!-- Verdier har typer. Dem kan sees på som labels som gjør at vi kan tenke rundt verdiene.
+    Men typer kan ha sine egne labels. Dette kalles Kinds.
+    -->
+
+## Kinds
+
+```hs
+ghci> :k Int
+Int :: *
+```
+
+<!-- Stjerna betyr at typen er en konkret type. Altså en type som ikke tar noen parametre.
+    kaller det bare star eller type.
+
+    -->
+
+&nbsp;
+
+```hs
+ghci> :k Maybe
+Maybe :: * -> *
+```
+<!-- Maybe typekonstruktøren tar en konkret type som Int, og returnerer en konkret type Maybe Int
+    Det er det stjerne -> stjerne betyr.
+
+    Typer er labels for verdier og kinds er labels for typene.
+    -->
+
+```hs
+ghci> :k Either
+Either :: * -> * -> *
+```
+
+<!-- Dette betyr at Either tar 2 type parametre og produserer en konkret type.
+
+Typekonstruktører er curried, så vi kan partially applie dem.
+    -->
+
+
+```hs
+ghci> :k Either String
+Either String :: * -> *
+ghci> :k Either String Int
+Either String Int :: *
+```
+
+<!-- Når vi gjorde Either til en del av Functor måtte vi partially applye, det er fordi
+    Functor forventer typer av kind * -> * (tar et typeparameter)
+    -->

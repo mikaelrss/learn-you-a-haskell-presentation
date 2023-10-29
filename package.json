@@ -12,7 +12,8 @@
   },
   "scripts": {
     "dev": "run-p preview:watch prettier:watch",
-    "preview:watch": "marp -p -w making-our-own-types-and-typeclasses.md",
+    "preview:typeclasses": "marp -p -w making-our-own-types-and-typeclasses.md",
+    "preview:monads": "marp -p -w for-a-few-monads-more.md",
     "prettier:watch": "onchange '**/*.md' -- npx prettier --write --ignore-unknown {{changed}}"
   },
   "dependencies": {
